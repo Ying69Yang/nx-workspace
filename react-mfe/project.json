@@ -1,0 +1,26 @@
+{
+  "name": "react-mfe",
+  "$schema": "../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "react-mfe/src",
+  "projectType": "application",
+  "tags": [],
+  "// targets": "to see all targets run: nx show project react-mfe --web",
+  "targets": {
+    "build-federation": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node react-mfe/build-federation.mjs"
+      }
+    },
+    "serve": {
+      "executor": "@nx/web:file-server",
+      "options": {
+        "buildTarget": "react-mfe:build-federation",
+        "port": 3000,
+        "staticFilePath": "dist/react-mfe",
+        "spa": true,
+        "cors": true
+      }
+    }
+  }
+}

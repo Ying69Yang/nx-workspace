@@ -1,0 +1,13 @@
+<div class="shell-layout">
+  <header class="shell-header">
+    <div class="logo">📸 MyApp</div>
+    <nav class="main-nav">
+      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">Home</a>
+      <a routerLink="/react-mfe" routerLinkActive="active">Camera (MFE)</a>
+    </nav>
+  </header>
+
+  <main class="shell-content">
+    <router-outlet></router-outlet>
+  </main>
+</div>

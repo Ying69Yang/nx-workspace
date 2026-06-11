@@ -1,0 +1,15 @@
+<div class="mfe-wrapper">
+  @if (loading) {
+  <div class="loading-state">
+    Loading React Micro Frontend...
+  </div>
+  }
+
+  @if (error) {
+  <div class="error-state">
+    {{ error }}
+  </div>
+  }
+
+  <div id="mfe-container"></div>
+</div>

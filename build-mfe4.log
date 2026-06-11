@@ -1,0 +1,58 @@
+﻿node.exe : Creating project graph nodes with 3 plugins
+En línea: 1 Carácter: 1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Creating projec... with 3 plugins:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  - @nx/eslint/plugin
+  - @nx/vite/plugin
+  - @nx/jest/plugin
+Creating project graph nodes with 2 plugins
+  - @nx/eslint/plugin
+  - @nx/jest/plugin
+Creating project graph nodes with @nx/eslint/plugin
+
+Creating project graph nodes with 5 plugins
+  - @nx/playwright/plugin
+  - @nx/eslint/plugin
+  - @nx/jest/plugin
+  - nx/core/package-json
+  - nx/core/project-json
+
+Creating project graph nodes with 5 plugins
+  - @nx/playwright/plugin
+  - @nx/eslint/plugin
+  - @nx/jest/plugin
+  - nx/core/package-json
+  - nx/core/project-json
+
+Creating project graph nodes with 5 plugins
+  - @nx/playwright/plugin
+  - @nx/eslint/plugin
+  - @nx/jest/plugin
+  - nx/core/package-json
+  - nx/core/project-json
+
+Creating project graph nodes with 5 plugins
+  - @nx/playwright/plugin
+  - @nx/eslint/plugin
+  - @nx/jest/plugin
+  - nx/core/package-json
+  - nx/core/project-json
+
+Creating project graph nodes with 5 plugins
+  - @nx/playwright/plugin
+  - @nx/eslint/plugin
+  - @nx/jest/plugin
+  - nx/core/package-json
+  - nx/core/project-json
+Creating project graph nodes with 4 plugins
+  - @nx/playwright/plugin
+  - @nx/eslint/plugin
+  - @nx/jest/plugin
+  - nx/core/package-json
+Creating project graph nodes with 3 plugins
+  - @nx/playwright/plugin
+  - @nx/eslint/plugin
+  - @nx/jest/plugin

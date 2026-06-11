@@ -1,0 +1,16 @@
+﻿[react19] Iniciando build de Native Federation...
+ INFO  Removed unused dependencies.
+ DBG!  This can be disabled per dependency/external using the "includeSecondaries: {keepAll: true}" property. Or in general by disabling the "ignoreUnusedDeps" feature. 
+ INFO  Building federation artifacts
+ NOTE  Skip packages you don't want to share in your federation config
+ DBG!  00:00:600.209ms - Step 3) Bundling all internal libraries and exposed modules.
+[react19] Build de esbuild completado. Copiando chunks de React...
+[react19] Chunks servibles copiados a dist/react-mfe/:
+  - react.js
+  - react_jsx-runtime.js
+  - react_jsx-dev-runtime.js
+  - react-dom.js
+  - react-dom_client.js
+[react19] remoteEntry.json escrito.
+[react19] index.html escrito. Bundle: web-component-YDCMH66I.js / CSS: web-component-MSMZW53M.css.
+Build de Native Federation (react-mfe) completado con exito.

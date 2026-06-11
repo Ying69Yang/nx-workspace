@@ -1,0 +1,17 @@
+﻿[react19] Iniciando build de Native Federation...
+ INFO  Removed unused dependencies.
+ DBG!  This can be disabled per dependency/external using the "includeSecondaries: {keepAll: true}" property. Or in general by disabling the "ignoreUnusedDeps" feature. 
+ INFO  Building federation artifacts
+ NOTE  Skip packages you don't want to share in your federation config
+ DBG!  00:00:730.467ms - Step 3) Bundling all internal libraries and exposed modules.
+[react19] Build de esbuild completado. Copiando chunks de React...
+[react19] remoteEntry.json escrito.
+[react19] index.html escrito. Bundle: web-component-YDCMH66I.js / CSS: web-component-MSMZW53M.css.
+Build de Native Federation (react-mfe) completado con exito.
+node : [react19] No se copio ningun chunk de React. Revisa node_modules/react y node_modules/react-dom.
+En línea: 1 Carácter: 307
++ ... ratch\nx-workspace'; node react-mfe/build-federation.mjs 2>&1 | Out-F ...
++                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([react19] No se...ules/react-dom.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
