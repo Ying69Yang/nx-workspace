@@ -1,12 +1,12 @@
-<div class="mfe-wrapper">
+<div class="p-4 border border-dashed border-gray-300 rounded-lg min-h-[300px] relative">
   @if (loading) {
-  <div class="loading-state">
+  <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-gray-500 font-sans">
     Loading React Micro Frontend...
   </div>
   }
 
   @if (error) {
-  <div class="error-state">
+  <div class="text-red-700 bg-red-50 p-4 rounded font-sans">
     {{ error }}
   </div>
   }
