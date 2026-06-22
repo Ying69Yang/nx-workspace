@@ -77,25 +77,24 @@ customElements.define('react-mfe-element', ReactMfeElement);
 
 Esto permite que **cualquier framework** (Angular, Vue, vanilla JS) monte el MFE sin saber que está hecho con React.
 
-### Build con esbuild (custom pipeline)
+### Build con esbuild (Native Federation standard)
 
-El archivo `build-federation.mjs` orquesta el build completo:
+El archivo `build-federation.mjs` orquesta el build:
 
-1. **Native Federation Builder** (`runEsBuildBuilder`) compila el código TSX con esbuild
-2. **Plugin `react19ExternalsPlugin`**: marca los imports de React/ReactDOM como externos y los redirige a URLs relativas (`./react.js`, `./react_jsx-runtime.js`, etc.)
-3. **Bundle de React**: esbuild bundlea cada entry point de React (CJS) a ESM independiente
-4. **Shim de named exports**: cada módulo CJS se envuelve en un shim ESM que expone tanto named exports como default export
-5. **`remoteEntry.json`**: se genera con la lista de `exposes` y sus nombres de archivo
+1. **Native Federation Builder** (`runEsBuildBuilder`) compila el código TSX con esbuild.
+2. **Externalización y compartición**: Las dependencias de `react`, `react-dom`, `react-dom/client` y `react/jsx-runtime` se configuran en `shared` de `federation.config.js`. El builder las externaliza automáticamente del bundle principal y las compila como chunks federados compartidos.
+3. **`remoteEntry.json`**: Se genera automáticamente por el builder con la metadata de módulos expuestos y dependencias compartidas.
+4. **`importmap.json`**: Se genera automáticamente conteniendo el mapa de importación local para ejecutar el micro frontend en aislamiento.
 
 ---
 
-## 🔀 React: ¿Federado o no federado?
+## 🔀 React: MFE Federado y Compartido
 
-**Decisión deliberada de arquitectura.** En esta POC el MFE React **NO comparte (no federado)** sus dependencias con el shell. Cada uno sirve su propia copia de React.
+En esta POC el MFE React **está federado** y comparte sus dependencias principales (`react`, `react-dom`, `react-dom/client`, `react/jsx-runtime`) con el Shell Angular. Ambas partes declaran estas librerías en su sección `shared`, lo que permite que el navegador cargue una sola instancia de React (patrón Singleton) en tiempo de ejecución.
 
-### Código: Sin federar (configuración actual)
+### Código: Configuración Federada
 
-**`react-mfe/federation.config.js`** — `shared` vacío, React se sirve localmente:
+**`react-mfe/federation.config.js`** — `shared` con React declarado como singleton y sus versiones requeridas:
 
 ```js
 const { withNativeFederation } = require('@softarc/native-federation/config');
@@ -106,126 +105,62 @@ module.exports = withNativeFederation({
     './web-component': './react-mfe/src/web-component.tsx',
   },
   shared: {
-    // Intencionalmente vacío: el MFE sirve sus propios chunks de React
-    // a través del file-server en :3000. No depende del import-map del shell.
+    react: { singleton: true, strictVersion: true, requiredVersion: '^19.0.0' },
+    'react-dom': { singleton: true, strictVersion: true, requiredVersion: '^19.0.0' },
+    'react-dom/client': { singleton: true, strictVersion: true, requiredVersion: '^19.0.0' },
+    'react/jsx-runtime': { singleton: true, strictVersion: true, requiredVersion: '^19.0.0' },
   },
   skip: [],
 });
 ```
 
-**`react-mfe/build-federation.mjs`** (plugin de esbuild) — redirige los imports de React a archivos locales:
+**`shell/federation.config.js`** — el shell también expone y comparte todas las dependencias principales instaladas en el workspace monorepo:
 
 ```js
-build.onResolve({ filter: /^react($|\/)|react-dom($|\/)/ }, (args) => {
-  const canonical = specifierToCanonical.get(args.path);
-  if (canonical) {
-    return { path: canonical, external: true };  // ./react_jsx-runtime.js
-  }
-});
-```
+const { withNativeFederation, shareAll } = require('@angular-architects/native-federation/config');
 
-**`react-mfe/project.json`** — el target `serve` usa un file-server que sirve los archivos de `dist/react-mfe/`:
-
-```json
-{
-  "serve": {
-    "executor": "@nx/web:file-server",
-    "options": {
-      "buildTarget": "react-mfe:build-federation",
-      "port": 3000,
-      "staticFilePath": "dist/react-mfe",
-      "spa": true
-    }
-  }
-}
-```
-
-**Resultado en el navegador** — el bundle `web-component.js` importa React desde el mismo origen:
-
-```js
-// web-component-YDCMH66I.js (simplificado)
-import pe from "./react-dom_client.js";
-import { jsx as C } from "./react_jsx-runtime.js";
-```
-
-### Código: Federado (cómo sería si compartiera React con el shell)
-
-**`react-mfe/federation.config.js`** — `shared` con React declarado:
-
-```js
-module.exports = withNativeFederation({
-  name: 'react-mfe',
-  exposes: {
-    './web-component': './react-mfe/src/web-component.tsx',
-  },
-  shared: {
-    react: { singleton: true, strictVersion: true, requiredVersion: '^19.0.0' },
-    'react-dom': { singleton: true, strictVersion: true, requiredVersion: '^19.0.0' },
-    'react/jsx-runtime': { singleton: true, strictVersion: true, requiredVersion: '^19.0.0' },
-  },
-});
-```
-
-**`shell/federation.config.js`** — el shell también debe exponer React:
-
-```js
 module.exports = withNativeFederation({
   name: 'shell',
   shared: {
     ...shareAll({ singleton: true, strictVersion: true, requiredVersion: 'auto' }),
-    // shareAll ya incluye react, react-dom, etc.
   },
+  // ...
 });
 ```
 
-**`react-mfe/build-federation.mjs`** — SIN el plugin de externals, React se bundlea inline o se resuelve vía import-map:
+**`react-mfe/build-federation.mjs`** — Invoca directamente al compilador nativo sin plugins de reescritura de externals:
 
 ```js
-// Sin react19ExternalsPlugin — esbuild bundlea React dentro de web-component.js
-// O bien se confía en que el import-map del shell resuelva los specifiers
-build.onResolve({ filter: /^react($|\/)|react-dom($|\/)/ }, (args) => {
-  return { path: args.path, external: true };
-  // El navegador buscará 'react' en el import-map que inyecta el runtime
-});
-```
-
-**`react-mfe/project.json`** — el target `serve` incluye un servidor de desarrollo con CORS y el runtime de federación:
-
-```json
-{
-  "serve": {
-    "executor": "@nx/web:file-server",
-    "options": {
-      "buildTarget": "react-mfe:build",
-      "port": 3000,
-      "staticFilePath": "dist/react-mfe",
-      "spa": true,
-      "cors": true
-    }
+const result = await runEsBuildBuilder(
+  'react-mfe/federation.config.js',
+  {
+    workspaceRoot,
+    outputPath: 'dist/react-mfe',
+    tsConfig: 'react-mfe/tsconfig.app.json',
+    dev: false,
+    verbose: true,
+    adapterConfig: {
+      plugins: [],
+      frameworks: [],
+    },
   }
-}
+);
 ```
 
-### Comparativa
+**Resultado en el navegador** — El bundle `web-component-XXXX.js` del remoto realiza imports puros:
 
-| Aspecto | No federado ✅ (actual) | Federado |
-|---------|----------------------|----------|
-| **Aislamiento de versiones** | ✅ Cada MFE usa la versión de React que necesita | ❌ Todos los MFEs deben usar exactamente la misma versión |
-| **Despliegue** | ✅ El MFE se despliega solo, sin tocar el shell | ⚠️ El shell debe recompilarse si cambia la versión de React compartida |
-| **Configuración** | ✅ `shared: {}` vacío. Sin dependencia del import-map | ⚠️ `shared` declarado en ambos lados. Riesgo de conflictos de singleton |
-| **Ancho de banda** | ⚠️ Cada MFE descarga React (~42 KB gzip sin minificar, ~10 KB con minificación y compresión HTTP) | ✅ Una sola descarga de React para todos los MFEs |
-| **"Multiple React instances"** | ✅ Imposible (cada MFE tiene su copia aislada) | ⚠️ Posible si el singleton falla por versiones incompatibles |
-| **Complejidad del build** | ✅ Baja. esbuild + copy de archivos | ⚠️ Media. Requiere coordinación fina de `shareAll` y `singleton` |
+```js
+import pe from "react-dom/client";
+import { jsx as C } from "react/jsx-runtime";
+```
 
-### ¿Cuándo federar?
+El navegador resuelve estos imports utilizando el **Import Map** global dinámico que el runtime de Native Federation inicializa al arrancar la Shell Angular (mezclando el import map del host y el de los remotes).
 
-Si el proyecto crece a **5+ MFEs React** y todos usan la misma versión, federar React empieza a tener sentido por el ahorro de ancho de banda. En ese caso:
+### Ventajas de la Arquitectura Federada
 
-1. Declarar `shared` en ambos `federation.config.js`
-2. Quitar el `react19ExternalsPlugin` del build
-3. Confiar en que el runtime de Native Federation resuelva los specifiers vía import-map
-
-Para una **POC con 1 MFE**, la opción no federada es más simple, más aislada y se despliega en cualquier entorno (DEV/PRE/PRO) sin depender del shell.
+1. **Ahorro de Ancho de Banda**: El navegador descarga y ejecuta el bundle de React una sola vez, sin importar cuántos MFEs React tengamos en la aplicación.
+2. **Singleton de Estado**: Al compartir la misma instancia de React, se evitan errores de ejecución de React hooks que ocurren cuando coexisten múltiples copias de la librería en el mismo hilo de ejecución.
+3. **Estándares Web**: Utiliza import maps nativos gestionados dinámicamente en lugar de empaquetar de forma fija con rutas relativas.
 
 ---
 
@@ -335,38 +270,32 @@ El MFE se despliega independientemente en cada entorno. El shell solo necesita s
 
 ```
 1. runEsBuildBuilder (Native Federation)
-   ├── Compila TSX → JS
-   ├── Aplica react19ExternalsPlugin
-   │   └── react → ./react.js
-   │       react/jsx-runtime → ./react_jsx-runtime.js
-   │       react-dom/client → ./react-dom_client.js
-   └── Genera web-component-<hash>.js
+   ├── Lee federation.config.js y extrae "shared" y "exposes"
+   ├── Compila el código TSX expuesto (web-component.tsx)
+   ├── Externaliza react, react-dom, react-dom/client y react/jsx-runtime
+   ├── Compila las dependencias compartidas a chunks ESM (react-XXXX.js, etc.)
+   ├── Genera remoteEntry.json con los metadatos correctos (shared + exposes)
+   └── Genera importmap.json local conteniendo las rutas a los chunks compilados
 
-2. copyReactChunksToOutput (esbuild)
-   ├── Bundlea CJS → ESM (format: 'esm')
-   ├── Renombra a *.cjs.js (ej: react_jsx-runtime.cjs.js)
-   └── Genera shim con named exports + default export
+2. fixFederationArtifacts (post-proceso)
+   └── Anade las entradas faltantes en remoteEntry.json (ej: react/jsx-runtime)
 
-3. writeRemoteEntry
-   └── Genera remoteEntry.json con exposes
-
-4. writeIndexHtml
-   └── Genera index.html standalone para testing
+3. writeIndexHtml
+   └── Genera index.html standalone para dev/testing con import map INLINE
+       (los navegadores no soportan src= en <script type="importmap">)
 ```
 
 ### Estructura de `dist/react-mfe/`
 
 ```
-remoteEntry.json         — Metadatos de federación
-web-component-XXXX.js    — Bundle del Web Component
-react.js                 — ESM shim de React
-react.cjs.js             — Bundle CJS → ESM de esbuild
-react_jsx-runtime.js     — ESM shim con jsx, jsxs, Fragment
-react_jsx-runtime.cjs.js
-react-dom.js
-react-dom_client.js
-importmap.json
-index.html               — Standalone para testing
+remoteEntry.json             — Metadatos de federación (shared + exposes)
+web-component-XXXX.js        — Bundle del Web Component (con imports puros: import we from "react-dom/client")
+importmap.json               — Mapa de importación local para dev/testing
+index.html                   — Standalone para testing en :3000
+react.XXXX.js                — Chunks compartidos federados (con hash para cache busting)
+react_dom.XXXX.js
+react_dom_client.XXXX.js
+react/jsx-runtime             — Resuelto via remoteEntry (no requiere archivo separado)
 ```
 
 ---
@@ -386,8 +315,8 @@ index.html               — Standalone para testing
 
 | Error | Causa | Solución |
 |-------|-------|----------|
-| `SyntaxError: doesn't provide an export named 'jsx'` | Chunks CJS sin transformar a ESM | El pipeline genera shims automáticamente |
-| `TypeError: can't access property "startsWith"` | `remoteEntry.json` con formato incorrecto | `exposes` debe ser array de `{ key, outFileName }` |
+| `Relative import path "react" not starting...` | Falta o no se ha cargado el Import Map | Asegurar que `importmap.json` está cargado antes que el bundle |
+| `TypeError: can't access property "startsWith"` | `remoteEntry.json` con formato incorrecto | La metadata del builder debe generarse de forma nativa |
 | `Error: unknown remote react-mfe` | El shell no encuentra el remoto | Revisar `federation.manifest.json` |
 | `DOMException: The object can not be found here` | Webcam no disponible | Conectar webcam o aceptar permisos |
 | Error de build Nx (daemon loop) | Daemon de Nx corrupto | `npx nx reset` y rebuild |

@@ -19,8 +19,13 @@ module.exports = withNativeFederation({
     './web-component': './react-mfe/src/web-component.tsx',
   },
   shared: {
-    // Intencionalmente vacio. Si en el futuro se quiere federar una lib
-    // comun con el shell (p.ej. un modelo de @libs/shared/models), anadirla aqui.
+    react: { singleton: true, strictVersion: true, requiredVersion: '^19.0.0' },
+    'react-dom': { singleton: true, strictVersion: true, requiredVersion: '^19.0.0' },
+    'react-dom/client': { singleton: true, strictVersion: true, requiredVersion: '^19.0.0' },
+    'react/jsx-runtime': { singleton: true, strictVersion: true, requiredVersion: '^19.0.0' },
   },
   skip: [],
+  esbuildConfig: {
+    external: ['react', 'react-dom', 'react-dom/client', 'react/jsx-runtime']
+  }
 });
