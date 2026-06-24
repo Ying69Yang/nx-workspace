@@ -289,12 +289,31 @@ async function fixFederationArtifacts() {
 }
 
 async function writeIndexHtml() {
-  const { readdir, readFile, writeFile } = await import("node:fs/promises");
+  const { readdir, readFile, writeFile, copyFile } = await import("node:fs/promises");
+
+  // Process styles.css through PostCSS/Tailwind for standalone mode
+  const srcStylesPath = path.join(__dirname, "src/styles.css");
+  const outStylesPath = path.join(outputDir, "styles.css");
+  try {
+    const postcss = (await import("postcss")).default;
+    const tailwindcss = (await import("tailwindcss")).default;
+    const autoprefixer = (await import("autoprefixer")).default;
+    const sourceCss = await readFile(srcStylesPath, "utf-8");
+    const result = await postcss([tailwindcss, autoprefixer]).process(sourceCss, {
+      from: srcStylesPath,
+      to: outStylesPath,
+    });
+    await writeFile(outStylesPath, result.css, "utf-8");
+    console.log("[react19] Procesado styles.css con Tailwind y copiado al output");
+  } catch (err) {
+    console.warn("[react19] No se pudo procesar styles.css:", err.message);
+  }
+
   const files = await readdir(outputDir);
   const bundle = files.find((f) => /^web-component-.*\.js$/.test(f) && !f.endsWith(".css"));
   if (!bundle) throw new Error(`[react19] No se encontro el bundle web-component-*.js.`);
 
-  const cssFile = files.find((f) => /^web-component-.*\.css$/.test(f));
+  const bundleCssFile = files.find((f) => /^web-component-.*\.css$/.test(f));
   let importMapInline = { imports: {} };
   try {
     importMapInline = JSON.parse(await readFile(path.join(outputDir, "importmap.json"), "utf-8"));
@@ -307,7 +326,8 @@ async function writeIndexHtml() {
   <meta charset="utf-8" />
   <title>react-mfe (standalone)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  ${cssFile ? `<link rel="stylesheet" href="./${cssFile}" />` : ""}
+  <link rel="stylesheet" href="./styles.css" />
+  ${bundleCssFile ? `<link rel="stylesheet" href="./${bundleCssFile}" />` : ""}
   <script src="https://ga.jspm.io/npm:es-module-shims@1.10.0/dist/es-module-shims.js"></script>
   <script type="importmap">
 ${JSON.stringify(importMapInline, null, 2)}
@@ -320,7 +340,7 @@ ${JSON.stringify(importMapInline, null, 2)}
 </body>
 </html>`;
   await writeFile(indexPath, html, "utf-8");
-  return { indexPath, bundle, cssFile };
+  return { indexPath, bundle, cssFile: bundleCssFile };
 }
 
 async function build() {

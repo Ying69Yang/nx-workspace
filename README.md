@@ -14,7 +14,7 @@
 | **Shell** | Angular 21 (SSR + esbuild) |
 | **MFE Remoto** | React 19 + Web Components (Custom Elements) |
 | **Federation** | Native Federation (esbuild, sin webpack) |
-| **Estilos** | Tailwind CSS 3.4 centralizado en el shell |
+| **Estilos** | Tailwind CSS 3.4: estilos base en el shell, copia procesada en el MFE para modo standalone |
 | **Cámara** | Web API (`getUserMedia`) + Capacitor (nativo) |
 | **PWA** | Service Worker + `ngsw-config.json` |
 | **Servidor SSR** | Express + Angular SSR |
@@ -194,6 +194,25 @@ content: [
 
 El shell compila el CSS con PostCSS + Tailwind. Como el MFE usa light DOM, las clases Tailwind escritas en los `.tsx` del MFE se incluyen en el CSS global del shell y se aplican sin `!important`.
 
+### Estilos del MFE en modo standalone
+
+Cuando el MFE React se ejecuta en **modo standalone** (puerto 3000), necesita sus propios estilos base de Tailwind. Para ello:
+
+1. **`react-mfe/src/styles.css`** contiene las mismas directivas `@tailwind` y estilos globales que el shell.
+2. Durante el build, `build-federation.mjs` procesa este archivo con **PostCSS + Tailwind** (usando `postcss`, `tailwindcss` y `autoprefixer` como módulos Node.js) y lo copia a `dist/react-mfe/styles.css`.
+3. El `index.html` standalone generado incluye `<link rel="stylesheet" href="./styles.css" />`.
+
+El **Web Component** (`web-component.tsx`) **no importa** `styles.css`. Esto es intencionado:
+
+| Escenario | Estilos aplicados |
+|-----------|------------------|
+| **Standalone** (`localhost:3000`) | `styles.css` compilado vía `<link>` en `index.html` |
+| **Dentro de la shell** (`localhost:4200`) | No se inyectan estilos globales desde el MFE; la shell mantiene sus propios estilos como prioritarios |
+
+Esta arquitectura asegura que:
+- En standalone el MFE se ve idéntico a cuando está dentro de la shell.
+- Cuando el MFE está embebido, los estilos de la shell son siempre los que gobiernan, evitando conflictos o duplicaciones.
+
 ---
 
 ## 📱 PWA + Capacitor
@@ -281,6 +300,9 @@ El MFE se despliega independientemente en cada entorno. El shell solo necesita s
    └── Anade las entradas faltantes en remoteEntry.json (ej: react/jsx-runtime)
 
 3. writeIndexHtml
+   ├── Procesa styles.css con PostCSS + Tailwind (tailwindcss, autoprefixer)
+   │   y lo copia a dist/react-mfe/styles.css para el modo standalone
+   ├── Incluye <link rel="stylesheet" href="./styles.css" /> en el HTML generado
    └── Genera index.html standalone para dev/testing con import map INLINE
        (los navegadores no soportan src= en <script type="importmap">)
 ```
@@ -343,6 +365,7 @@ nx-workspace/
 │
 ├── react-mfe/                       ← React 19 (remote)
 │   ├── src/
+│   │   ├── styles.css                  ← Estilos globales (Tailwind + overrides)
 │   │   ├── app/
 │   │   │   ├── CameraComponent.tsx     ← Vista (JSX)
 │   │   │   ├── useCamera.ts            ← Lógica (hook)
