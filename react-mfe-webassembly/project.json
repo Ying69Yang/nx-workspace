@@ -1,0 +1,26 @@
+{
+  "name": "react-mfe-webassembly",
+  "$schema": "../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "react-mfe-webassembly/src",
+  "projectType": "application",
+  "tags": [],
+  "// targets": "to see all targets run: nx show project react-mfe-webassembly --web",
+  "targets": {
+    "build-federation": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node react-mfe-webassembly/build-federation.mjs"
+      }
+    },
+    "serve": {
+      "executor": "@nx/web:file-server",
+      "options": {
+        "buildTarget": "react-mfe-webassembly:build-federation",
+        "port": 3001,
+        "staticFilePath": "dist/react-mfe-webassembly",
+        "spa": true,
+        "cors": true
+      }
+    }
+  }
+}

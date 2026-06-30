@@ -7,6 +7,10 @@ export const appRoutes: Route[] = [
     pathMatch: 'full'
   },
   {
+    path: 'react-mfe-webassembly',
+    loadComponent: () => import('./wrappers/react-webassembly').then(m => m.ReactWebassembly)
+  },
+  {
     path: 'react-mfe',
     loadComponent: () => import('./wrappers/react-wrapper').then(m => m.ReactWrapper)
   }

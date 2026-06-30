@@ -6,7 +6,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const workspaceRoot = process.env.NX_WORKSPACE_ROOT || path.join(__dirname, '..');
-const outputDir = path.join(workspaceRoot, 'dist/react-mfe');
+const outputDir = path.join(workspaceRoot, 'dist/react-mfe-webassembly');
 const cacheDir = path.join(workspaceRoot, 'node_modules/.cache/native-federation/react_mfe');
 
 async function fixFederationArtifacts() {
@@ -328,7 +328,7 @@ async function writeIndexHtml() {
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <title>react-mfe (standalone)</title>
+  <title>react-mfe-webassembly (standalone)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="./styles.css" />
   ${bundleCssFile ? `<link rel="stylesheet" href="./${bundleCssFile}" />` : ""}
@@ -338,8 +338,8 @@ ${JSON.stringify(importMapInline, null, 2)}
   </script>
 </head>
 <body>
-  <h1>react-mfe (standalone)</h1>
-  <react-mfe-element></react-mfe-element>
+  <h1>react-mfe-webassembly (standalone)</h1>
+  <react-mfe-webassembly-element></react-mfe-webassembly-element>
   <script type="module" src="./${bundle}"></script>
 </body>
 </html>`;
@@ -356,11 +356,11 @@ async function build() {
 
   console.log("[react19] Ejecutando Native Federation Builder...");
   const result = await runEsBuildBuilder(
-    "react-mfe/federation.config.js",
+    "react-mfe-webassembly/federation.config.js",
     {
       workspaceRoot,
-      outputPath: "dist/react-mfe",
-      tsConfig: "react-mfe/tsconfig.app.json",
+      outputPath: "dist/react-mfe-webassembly",
+      tsConfig: "react-mfe-webassembly/tsconfig.app.json",
       dev: false,
       verbose: true,
       adapterConfig: { plugins: [], frameworks: [] },
