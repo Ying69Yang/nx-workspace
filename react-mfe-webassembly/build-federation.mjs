@@ -354,6 +354,23 @@ async function build() {
   await rm(cacheDir, { recursive: true, force: true });
   await mkdir(outputDir, { recursive: true });
 
+  console.log("[react19] Compilando AssemblyScript a WebAssembly...");
+  const asc = await import("assemblyscript/asc");
+  const ascResult = await asc.main([
+    "react-mfe-webassembly/assembly/index.ts",
+    "--target", "release",
+    "--outFile", path.join(outputDir, "Mandelbrot.wasm"),
+    "-O3",               // <--- Optimización matemática y de bucles agresiva (Level 3)
+    "--noAssert",        // <--- CRUCIAL: Elimina la sobrecarga de comprobar límites de memoria
+    "--runtime", "stub",
+    "--exportRuntime",
+    "--enable", "simd"
+  ]);
+  if (ascResult && ascResult.error) {
+    throw new Error(`AssemblyScript compilation failed: ${ascResult.error.message}`);
+  }
+  console.log("[react19] Compilacion de AssemblyScript completada.");
+
   console.log("[react19] Ejecutando Native Federation Builder...");
   const result = await runEsBuildBuilder(
     "react-mfe-webassembly/federation.config.js",
