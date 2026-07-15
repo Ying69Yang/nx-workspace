@@ -74,14 +74,14 @@ export const useWebAssembly = (canvasRef: RefObject<HTMLCanvasElement | null>) =
   // --- Initialize Wasm ---
   useEffect(() => {
     const initWasm = async () => {
-      let wasmUrl = 'Mandelbrot.wasm';
+      let wasmUrl = 'imgSIMD.wasm';
       try {
         const res = await fetch('/federation.manifest.json');
         if (res.ok) {
           const manifest = await res.json();
           const remoteEntry = manifest['react-mfe-webassembly'];
           if (remoteEntry) {
-            wasmUrl = new URL('Mandelbrot.wasm', remoteEntry).href;
+            wasmUrl = new URL('imgSIMD.wasm', remoteEntry).href;
           }
         }
       } catch (_e) { /* use default */ }

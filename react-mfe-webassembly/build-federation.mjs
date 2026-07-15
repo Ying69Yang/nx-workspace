@@ -359,7 +359,7 @@ async function build() {
   const ascResult = await asc.main([
     "react-mfe-webassembly/assembly/index.ts",
     "--target", "release",
-    "--outFile", path.join(outputDir, "Mandelbrot.wasm"),
+    "--outFile", path.join(outputDir, "imgSIMD.wasm"),
     "-O3",               // <--- Optimización matemática y de bucles agresiva (Level 3)
     "--noAssert",        // <--- CRUCIAL: Elimina la sobrecarga de comprobar límites de memoria
     "--runtime", "stub",
