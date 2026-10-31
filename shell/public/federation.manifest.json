@@ -1,4 +1,5 @@
 {
 	"react-mfe": "http://localhost:3000/remoteEntry.json",
-	"react-mfe-webassembly": "http://localhost:3001/remoteEntry.json"
+	"react-mfe-webassembly": "http://localhost:3001/remoteEntry.json",
+	"react-mfe-chat-ia": "http://localhost:3002/remoteEntry.json"
 }

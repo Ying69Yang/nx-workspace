@@ -6,6 +6,7 @@ module.exports = {
     `${workspaceRoot}/shell/src/**/*.{html,ts,scss}`,
     `${workspaceRoot}/react-mfe/src/**/*.{tsx,ts,jsx,js,css}`,
     `${workspaceRoot}/react-mfe-webassembly/src/**/*.{tsx,ts,jsx,js,css}`,
+    `${workspaceRoot}/react-mfe-chat-ia/src/**/*.{tsx,ts,jsx,js,css}`
   ],
   theme: {
     extend: {

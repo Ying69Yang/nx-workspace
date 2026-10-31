@@ -1,0 +1,26 @@
+{
+  "name": "react-mfe-chat-ia",
+  "$schema": "../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "react-mfe-chat-ia/src",
+  "projectType": "application",
+  "tags": [],
+  "// targets": "to see all targets run: nx show project react-mfe-chat-ia --web",
+  "targets": {
+    "build-federation": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node react-mfe-chat-ia/build-federation.mjs"
+      }
+    },
+    "serve": {
+      "executor": "@nx/web:file-server",
+      "options": {
+        "buildTarget": "react-mfe-chat-ia:build-federation",
+        "port": 3002,
+        "staticFilePath": "dist/react-mfe-chat-ia",
+        "spa": true,
+        "cors": true
+      }
+    }
+  }
+}

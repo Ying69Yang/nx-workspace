@@ -1,0 +1,12 @@
+{
+  "name": "react-mfe-chat-ia-e2e",
+  "$schema": "../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "react-mfe-chat-ia-e2e/src",
+  "implicitDependencies": [
+    "react-mfe-chat-ia"
+  ],
+  "tags": [],
+  "// targets": "to see all targets run: nx show project react-mfe-chat-ia-e2e --web",
+  "targets": {}
+}
