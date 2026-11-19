@@ -78,10 +78,10 @@ export const WebAssemblyComponent: React.FC = () => {
       </div>
 
       <p className="text-gray-500 text-xs text-center max-w-xl">
-        🔬 Box blur 3×3 aplicado {5} veces sobre imagen 400×400 (160,000 píxeles).
-        Wasm usa SIMD (v128) para procesar 4 componentes RGBA simultáneamente.
-        JS procesa componente por componente (escalar). Sólo se mide el cálculo puro,
-        sin incluir el pintado del canvas en el cronómetro.
+        🔬 3×3 box blur applied {5} times on a 400×400 image (160,000 pixels).
+        The benchmark runs 2 passes: one applying the blur with JavaScript and another with WebAssembly (Wasm).
+        Wasm uses SIMD (v128) to process 4 RGBA components simultaneously, whereas JS processes component by component (scalar).
+        Only pure computation is timed, excluding canvas rendering.
       </p>
     </div>
   );
