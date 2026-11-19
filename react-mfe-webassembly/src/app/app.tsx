@@ -7,9 +7,6 @@ export function App() {
         <h1 className="text-3xl font-extrabold text-gray-950 tracking-tight sm:text-4xl bg-gradient-to-r from-primary-700 to-indigo-700 bg-clip-text text-transparent">
           WebAssembly & AssemblyScript
         </h1>
-        <p className="mt-2 text-base text-gray-600 max-w-2xl">
-          Renderizado en tiempo real de Mandelbrot con memoria compartida y benchmarks de rendimiento nativo.
-        </p>
       </header>
 
       <WebAssemblyComponent />
