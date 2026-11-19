@@ -21,6 +21,86 @@
 
 ---
 
+## 🚀 Instalación y Puesta en Marcha (Quick Start)
+
+Si acabas de clonar el repositorio en un equipo nuevo, sigue estos pasos para instalarlo y arrancarlo:
+
+### 1. Requisitos previos
+- **Node.js**: v20.x o superior (LTS recomendado).
+- **npm**: v10.x o superior.
+- **Git**
+
+### 2. Instalación de dependencias
+Desde la raíz del proyecto:
+
+```bash
+npm install
+```
+
+### 3. Arrancar en desarrollo
+
+El proyecto utiliza una arquitectura de microfrontends con **Native Federation**. La Shell Angular consume en tiempo de ejecución los remotos definidos en `shell/public/federation.manifest.json`.
+
+#### ⚡ Opción A: Arrancar todo en paralelo (Recomendado)
+Levanta la Shell y todos los microfrontends a la vez:
+
+```bash
+npm start
+# o alternativamente vía Nx:
+npx nx run-many -t serve
+```
+
+Una vez levantado, accede a las aplicaciones:
+- 🌐 **Shell Principal (Angular Host)**: [http://localhost:4200](http://localhost:4200)
+- 📷 **MFE Cámara (React)**: [http://localhost:3000](http://localhost:3000)
+- ⚡ **MFE WebAssembly SIMD (React)**: [http://localhost:3001](http://localhost:3001)
+- 💬 **MFE Chat IA (React)**: [http://localhost:3002](http://localhost:3002)
+
+#### 🛠️ Opción B: Arrancar servicios individualmente
+Si deseas depurar un microfrontend específico o tener terminales separadas:
+
+```bash
+# Terminal 1 — Shell Angular (puerto 4200)
+npm run serve:shell
+# (o: npx nx serve shell)
+
+# Terminal 2 — MFE Cámara (puerto 3000)
+npm run serve:react-mfe
+# (o: npx nx serve react-mfe)
+
+# Terminal 3 — MFE WebAssembly (puerto 3001)
+npm run serve:react-mfe-webassembly
+# (o: npx nx serve react-mfe-webassembly)
+
+# Terminal 4 — MFE Chat IA (puerto 3002)
+npm run serve:react-mfe-chat-ia
+# (o: npx nx serve react-mfe-chat-ia)
+```
+
+> [!TIP]
+> **Modo Standalone**: Cada microfrontend React cuenta con su propio servidor de desarrollo y plantilla HTML independiente con Tailwind. Puedes visitarlos directamente en sus puertos (3000, 3001, 3002) para probarlos en aislamiento sin necesidad de abrir la Shell.
+
+### 4. Compilación / Build para producción
+
+```bash
+# Compilar todos los proyectos del monorepo
+npm run build:all
+# (o: npx nx run-many -t build)
+
+# Compilar un proyecto en particular
+npx nx run shell:build
+npx nx run react-mfe:build-federation
+npx nx run react-mfe-webassembly:build-federation
+npx nx run react-mfe-chat-ia:build-federation
+```
+
+### 5. Resolución de incidencias comunes
+- **Caché o daemon de Nx bloqueado**: Ejecuta `npm run reset` (o `npx nx reset`) para reiniciar el daemon de Nx.
+- **Error `Failed to fetch remoteEntry.json` en consola**: Asegúrate de que los puertos `3000`, `3001` y `3002` están levantados y sirviendo antes de navegar a la Shell en el puerto `4200`.
+- **Puertos ocupados**: Verifica que no haya procesos residuales usando los puertos 4200, 3000, 3001 o 3002.
+
+---
+
 ## 🧱 Proyectos del workspace
 
 ### `shell` — Angular 21 (host)
@@ -41,6 +121,24 @@ Micro frontend React expuesto como Web Component (`<react-mfe-element>`). Indepe
 - **Framework**: React 19 con `react-jsx` (JSX transform automático)
 - **Web Component**: `web-component.tsx` define `ReactMfeElement` como Custom Element
 - **Cámara**: Hook `useCamera` con detección automática de entorno
+- **Build**: Script propio `build-federation.mjs` con esbuild
+
+### `react-mfe-webassembly` — React 19 + AssemblyScript (remote)
+
+Micro frontend enfocado en computación intensiva de alto rendimiento con WebAssembly y SIMD (v128) para filtrado de imágenes (box blur).
+
+- **Puerto**: `3001`
+- **Tecnologías**: React 19, AssemblyScript, SIMD v128, HTML5 Canvas
+- **Web Component**: `<react-mfe-webassembly-element>`
+- **Build**: Compilación de AssemblyScript a `.wasm` y empaquetado con esbuild en `build-federation.mjs`
+
+### `react-mfe-chat-ia` — React 19 (remote)
+
+Micro frontend de asistencia conversacional con IA.
+
+- **Puerto**: `3002`
+- **Framework**: React 19
+- **Web Component**: `<react-mfe-chat-ia-element>`
 - **Build**: Script propio `build-federation.mjs` con esbuild
 
 ---
@@ -415,7 +513,7 @@ nx-workspace/
 │   ├── ngsw-config.json                ← Service Worker PWA
 │   └── project.json
 │
-├── react-mfe/                       ← React 19 (remote)
+├── react-mfe/                       ← React 19 (remote: Cámara)
 │   ├── src/
 │   │   ├── styles.css                  ← Estilos globales (Tailwind + overrides)
 │   │   ├── app/
@@ -425,10 +523,23 @@ nx-workspace/
 │   │   │   └── app.module.css
 │   │   └── web-component.tsx           ← Custom Element
 │   ├── build-federation.mjs            ← Pipeline de build
-│   ├── federation.config.js            ← Config Native Federation
-│   └── vite.config.mts                 ← Config Vite (residual)
+│   └── federation.config.js            ← Config Native Federation
 │
-├── tailwind.config.js                  ← Tailwind (escanea shell + react-mfe)
+├── react-mfe-webassembly/           ← React 19 + AssemblyScript (remote: Wasm SIMD)
+│   ├── assembly/                       ← Código fuente AssemblyScript (SIMD v128)
+│   ├── src/
+│   │   └── app/
+│   │       ├── WebAssemblyComponent.tsx
+│   │       └── useWebAssembly.ts
+│   ├── build-federation.mjs            ← Compilación de Wasm + Native Federation
+│   └── federation.config.js
+│
+├── react-mfe-chat-ia/               ← React 19 (remote: Chat IA)
+│   ├── src/
+│   ├── build-federation.mjs
+│   └── federation.config.js
+│
+├── tailwind.config.js                  ← Tailwind (escanea shell + MFEs)
 ├── postcss.config.js
 ├── nx.json
 └── package.json

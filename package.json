@@ -2,7 +2,16 @@
   "name": "@nx-workspace/source",
   "version": "0.0.0",
   "license": "MIT",
-  "scripts": {},
+  "scripts": {
+    "start": "nx run-many -t serve",
+    "serve:all": "nx run-many -t serve",
+    "serve:shell": "nx serve shell",
+    "serve:react-mfe": "nx serve react-mfe",
+    "serve:react-mfe-webassembly": "nx serve react-mfe-webassembly",
+    "serve:react-mfe-chat-ia": "nx serve react-mfe-chat-ia",
+    "build:all": "nx run-many -t build",
+    "reset": "nx reset"
+  },
   "private": true,
   "devDependencies": {
     "@angular-architects/native-federation": "^21.2.3",
