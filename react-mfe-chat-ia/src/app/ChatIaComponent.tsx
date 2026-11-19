@@ -17,6 +17,7 @@ interface ModelOption {
   description: string;
   size?: string;
   badge?: string;
+  modelId?: string;
 }
 
 const BROWSER_MODELS: ModelOption[] = [
@@ -26,18 +27,28 @@ const BROWSER_MODELS: ModelOption[] = [
     description: 'Ultraligero, rápido y excelente soporte en español.',
     size: '~350 MB',
     badge: 'Recomendado',
+    modelId: 'Qwen2.5-0.5B-Instruct-q4f16_1-MLC',
+  },
+  {
+    id: 'qwen-Coder',
+    name: 'Qwen 2.5 (Coder-1.5B)',
+    description: 'Especializado en asistencia de código y lógica.',
+    size: '~1.2 GB',
+    modelId: 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
   },
   {
     id: 'llama-1b',
     name: 'Llama 3.2 (1B)',
     description: 'Modelo de Meta optimizado para conversación fluida.',
     size: '~800 MB',
+    modelId: 'Llama-3.2-1B-Instruct-q4f16_1-MLC',
   },
   {
     id: 'smollm-360m',
     name: 'SmolLM2 (360M)',
     description: 'Extremadamente pequeño, ideal para pruebas inmediatas.',
     size: '~200 MB',
+    modelId: 'SmolLM2-360M-Instruct-q4f16_1-MLC',
   },
 ];
 
@@ -78,10 +89,15 @@ export const ChatIaComponent: React.FC = () => {
   });
   const [showSettings, setShowSettings] = useState<boolean>(false);
 
-  // Estado del modelo en navegador (WebLLM UI)
+  // Estado del modelo en navegador (WebLLM)
   const [modelLoading, setModelLoading] = useState<boolean>(false);
   const [modelProgress, setModelProgress] = useState<number>(0);
+  const [modelStatusText, setModelStatusText] = useState<string>('');
   const [modelReady, setModelReady] = useState<boolean>(false);
+  const [browserError, setBrowserError] = useState<string | null>(null);
+
+  const engineRef = useRef<any>(null);
+  const loadedModelIdRef = useRef<string | null>(null);
 
   // Chat
   const [messages, setMessages] = useState<Message[]>([
@@ -92,7 +108,7 @@ export const ChatIaComponent: React.FC = () => {
         '¡Hola! Soy tu asistente de IA. Puedes elegir si quieres que razone **localmente en tu navegador** con WebGPU/Wasm (100% privado y sin enviar datos) o conectarme a **modelos en la nube** (Gemini, DeepSeek, Llama). ¿En qué te puedo ayudar hoy?',
       timestamp: 'Ahora',
       mode: 'browser',
-      modelName: 'Qwen 2.5 (0.5B)',
+      modelName: 'Qwen 2.5 (Coder-1.5B)',
     },
   ]);
   const [input, setInput] = useState<string>('');
@@ -108,27 +124,51 @@ export const ChatIaComponent: React.FC = () => {
     localStorage.setItem('chat_ia_cloud_api_key', key);
   };
 
-  // Simulación de carga de modelo en navegador
-  const handleLoadBrowserModel = () => {
+  // Carga e inicialización real de WebLLM
+  const handleLoadBrowserModel = async () => {
+    const selectedModel = BROWSER_MODELS.find((m) => m.id === browserModel);
+    if (!selectedModel?.modelId) return;
+
+    if (typeof navigator !== 'undefined' && !('gpu' in navigator)) {
+      setBrowserError('WebGPU no está disponible en este navegador o sistema. Asegúrate de usar Chrome/Edge reciente con aceleración gráfica.');
+      return;
+    }
+
+    setBrowserError(null);
     setModelLoading(true);
     setModelProgress(0);
-    const interval = setInterval(() => {
-      setModelProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setModelLoading(false);
-          setModelReady(true);
-          return 100;
-        }
-        return prev + 25;
+    setModelStatusText('Iniciando WebLLM...');
+
+    try {
+      const { CreateMLCEngine } = await import('@mlc-ai/web-llm');
+      const engine = await CreateMLCEngine(selectedModel.modelId, {
+        initProgressCallback: (report) => {
+          setModelProgress(Math.round(report.progress * 100));
+          setModelStatusText(report.text);
+        },
       });
-    }, 400);
+
+      engineRef.current = engine;
+      loadedModelIdRef.current = selectedModel.id;
+      setModelLoading(false);
+      setModelReady(true);
+      setModelStatusText('Modelo cargado y listo en memoria.');
+    } catch (err: any) {
+      console.error('Error al inicializar WebLLM:', err);
+      setBrowserError(err?.message || 'Error al descargar o inicializar el modelo WebGPU.');
+      setModelLoading(false);
+    }
   };
 
-  // Simulación de envío de mensaje (mock temporal hasta integrar SDKs reales)
-  const handleSendMessage = (textToSend?: string) => {
+  // Envío de mensaje
+  const handleSendMessage = async (textToSend?: string) => {
     const text = (textToSend || input).trim();
     if (!text || isTyping) return;
+
+    const currentModelObj =
+      mode === 'browser'
+        ? BROWSER_MODELS.find((m) => m.id === browserModel)
+        : CLOUD_MODELS.find((m) => m.id === cloudModel);
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -136,42 +176,89 @@ export const ChatIaComponent: React.FC = () => {
       content: text,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       mode,
-      modelName:
-        mode === 'browser'
-          ? BROWSER_MODELS.find((m) => m.id === browserModel)?.name || 'WebLLM'
-          : CLOUD_MODELS.find((m) => m.id === cloudModel)?.name || 'Cloud AI',
+      modelName: currentModelObj?.name || (mode === 'browser' ? 'WebLLM' : 'Cloud AI'),
     };
 
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
     setIsTyping(true);
 
-    // Mock response
-    setTimeout(() => {
-      let botResponse = '';
-      const currentModelName =
-        mode === 'browser'
-          ? BROWSER_MODELS.find((m) => m.id === browserModel)?.name
-          : CLOUD_MODELS.find((m) => m.id === cloudModel)?.name;
+    const assistantMsgId = (Date.now() + 1).toString();
+    const assistantPlaceholder: Message = {
+      id: assistantMsgId,
+      role: 'assistant',
+      content: '',
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      mode,
+      modelName: currentModelObj?.name || 'AI',
+    };
 
-      if (mode === 'browser') {
-        botResponse = `⚡ **[Respuesta simulada local]**\nHe procesado tu consulta utilizando **${currentModelName}** en local a través del navegador con WebGPU.\n\nPronto integraremos la conexión real con \`@mlc-ai/web-llm\` para que esta respuesta sea generada por los pesos del modelo en tu memoria local.`;
-      } else {
-        botResponse = `☁️ **[Respuesta simulada en la nube]**\nConsulta recibida para **${currentModelName}**.\n\nPronto integraremos la llamada con streaming a la API seleccionada ${
-          cloudApiKey ? 'usando tu API Key guardada' : '(recuerda configurar tu API Key gratuita en los ajustes)'
-        }.`;
+    // Caso A: Modo navegador con motor WebLLM listo
+    if (mode === 'browser' && engineRef.current && loadedModelIdRef.current === browserModel) {
+      setMessages((prev) => [...prev, assistantPlaceholder]);
+      try {
+        const history = messages
+          .filter((m) => m.id !== 'welcome')
+          .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
+        history.push({ role: 'user', content: text });
+
+        const chunks = await engineRef.current.chat.completions.create({
+          messages: history,
+          stream: true,
+        });
+
+        let accumulated = '';
+        for await (const chunk of chunks) {
+          const delta = chunk.choices[0]?.delta?.content || '';
+          accumulated += delta;
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantMsgId ? { ...msg, content: accumulated } : msg
+            )
+          );
+        }
+      } catch (err: any) {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === assistantMsgId
+              ? { ...msg, content: `⚠️ Error de inferencia local: ${err?.message || err}` }
+              : msg
+          )
+        );
+      } finally {
+        setIsTyping(false);
       }
+      return;
+    }
 
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: botResponse,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        mode,
-        modelName: currentModelName || 'AI',
-      };
+    // Caso B: Si está en modo navegador pero no se ha cargado el modelo
+    if (mode === 'browser' && (!engineRef.current || loadedModelIdRef.current !== browserModel)) {
+      setTimeout(() => {
+        const botResponse = `⚠️ **El modelo ${currentModelObj?.name} aún no está cargado en la GPU.**\n\nHaz clic en el botón **📥 Cargar en GPU** en la barra superior para descargar y montar los pesos en la memoria de tu navegador antes de consultar.`;
+        setMessages((prev) => [
+          ...prev,
+          {
+            ...assistantPlaceholder,
+            content: botResponse,
+          },
+        ]);
+        setIsTyping(false);
+      }, 300);
+      return;
+    }
 
-      setMessages((prev) => [...prev, assistantMessage]);
+    // Caso C: Modo Nube (Mock temporal hasta conectar APIs cloud)
+    setTimeout(() => {
+      const botResponse = `☁️ **[Respuesta simulada en la nube]**\nConsulta recibida para **${currentModelObj?.name}**.\n\nPronto integraremos la llamada con streaming a la API seleccionada ${cloudApiKey ? 'usando tu API Key guardada' : '(recuerda configurar tu API Key gratuita en los ajustes)'
+        }.`;
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          ...assistantPlaceholder,
+          content: botResponse,
+        },
+      ]);
       setIsTyping(false);
     }, 1000);
   };
@@ -195,11 +282,10 @@ export const ChatIaComponent: React.FC = () => {
           <div className="inline-flex p-1 bg-gray-200/70 rounded-xl">
             <button
               onClick={() => setMode('browser')}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition-all ${
-                mode === 'browser'
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition-all ${mode === 'browser'
                   ? 'bg-white text-indigo-700 shadow-sm'
                   : 'text-gray-600 hover:text-gray-900'
-              }`}
+                }`}
             >
               <span className="text-base">🌐</span>
               <span>En el Navegador (WebLLM)</span>
@@ -210,11 +296,10 @@ export const ChatIaComponent: React.FC = () => {
 
             <button
               onClick={() => setMode('cloud')}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition-all ${
-                mode === 'cloud'
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition-all ${mode === 'cloud'
                   ? 'bg-white text-indigo-700 shadow-sm'
                   : 'text-gray-600 hover:text-gray-900'
-              }`}
+                }`}
             >
               <span className="text-base">☁️</span>
               <span>En la Nube (API)</span>
@@ -284,11 +369,10 @@ export const ChatIaComponent: React.FC = () => {
 
                 <button
                   onClick={() => setShowSettings(!showSettings)}
-                  className={`p-2 rounded-lg border text-xs font-medium transition flex items-center gap-1.5 ${
-                    cloudApiKey
+                  className={`p-2 rounded-lg border text-xs font-medium transition flex items-center gap-1.5 ${cloudApiKey
                       ? 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
                       : 'bg-amber-50 border-amber-300 text-amber-800 hover:bg-amber-100'
-                  }`}
+                    }`}
                   title="Configurar API Key"
                 >
                   <span>⚙️</span>
@@ -298,6 +382,30 @@ export const ChatIaComponent: React.FC = () => {
             )}
           </div>
         </div>
+
+        {/* Alerta de error WebGPU */}
+        {browserError && mode === 'browser' && (
+          <div className="mt-3 p-2.5 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-center justify-between">
+            <span>⚠️ {browserError}</span>
+            <button onClick={() => setBrowserError(null)} className="text-red-500 hover:text-red-800 font-bold ml-2">✕</button>
+          </div>
+        )}
+
+        {/* Barra de progreso de descarga e inicialización WebGPU */}
+        {modelLoading && mode === 'browser' && (
+          <div className="mt-3 p-3 bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs rounded-xl space-y-1.5 shadow-xs">
+            <div className="flex justify-between items-center font-medium">
+              <span className="truncate pr-2">{modelStatusText || 'Descargando y compilando shaders WebGPU...'}</span>
+              <span className="font-bold shrink-0">{modelProgress}%</span>
+            </div>
+            <div className="w-full bg-emerald-200/80 rounded-full h-2 overflow-hidden">
+              <div
+                className="bg-emerald-600 h-2 rounded-full transition-all duration-300"
+                style={{ width: `${modelProgress}%` }}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Banner informativo del modo */}
         <div className="mt-3 text-xs flex items-center justify-between text-gray-500 bg-white/60 px-3 py-1.5 rounded-lg border border-gray-200/60">
@@ -369,13 +477,12 @@ export const ChatIaComponent: React.FC = () => {
             >
               {/* Avatar */}
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm shadow-sm ${
-                  isUser
+                className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm shadow-sm ${isUser
                     ? 'bg-indigo-600 text-white font-bold'
                     : msg.mode === 'browser'
-                    ? 'bg-emerald-600 text-white'
-                    : 'bg-blue-600 text-white'
-                }`}
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-blue-600 text-white'
+                  }`}
               >
                 {isUser ? 'Tú' : msg.mode === 'browser' ? '🌐' : '☁️'}
               </div>
@@ -392,11 +499,10 @@ export const ChatIaComponent: React.FC = () => {
                 </div>
 
                 <div
-                  className={`px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap shadow-sm ${
-                    isUser
+                  className={`px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap shadow-sm ${isUser
                       ? 'bg-indigo-600 text-white rounded-tr-none'
                       : 'bg-white border border-gray-200 text-gray-800 rounded-tl-none'
-                  }`}
+                    }`}
                 >
                   {msg.content}
                 </div>
